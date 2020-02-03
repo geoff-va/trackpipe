@@ -46,3 +46,12 @@ pipeline.run_pipe(transforms)
 If no `name` parameter is passed to the `Window` constructor, it defaults to `Step N`. Otherwise, you can name the windows if you'd like.
 
 A few simple transforms are included.
+
+## Examples
+If you clone the repo, there are two examples in `example.py`. To run:
+- `python example.py --example 1`
+- `python examlpe.py --example 2`
+
+Example 1 is a reproduciton of Bob's trackbar example
+Example 2 is a file load, color convert and two gaussian blurs in successive windows to demonstrate the pipeline
+
