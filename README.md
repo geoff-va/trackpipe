@@ -13,7 +13,7 @@ or if you've cloned the repo:
 
 
 ## Usage
-Create individual `Transform`s once, and then compose them into `Window`s and reuse them throughout your pipeline.
+Create individual `Transform`s once, add them into `Window`s and reuse/reorder them throughout your pipeline.
 
 - Subclass `pipeline.Transform`
 - Add `Param` class attributes for each trackbar param you'd like
@@ -38,30 +38,32 @@ Create one of these for each operation you'd like to perform (Convert Color, inR
 
 **Multiple Windows**
 ```python
-w1 = Window([Transform1(), Transform2(), ...])
-w1 = Window([Transform3(), Transform4(), ...])
+w1 = Window([LoadImage('your_file.png'), Transform1(), ...])
+w2 = Window([Transform2(), Transform3(), ...])
 
-pipeline.run_pipe([w1, w2])
+pipeline.run_pipe([w1, w2])  # no img param; can use a transform to load and return your image
 ```
 
 **Single Window**
 ```python
+img = cv2.imread('your_file.png')
 transforms = [Transform1(), Transform2(), ...]
-pipeline.run_pipe(transforms)
+pipeline.run_pipe(transforms, img)  # Can also pass a loaded image to `run_pipe`
 ```
 
 If no `name` parameter is passed to the `Window` constructor, it defaults to `Step N`. Otherwise, you can name the windows if you'd like.
 
 A few simple transforms are included.
 
+If you override the `__init__` method, you _must_ call `super().__init__()` first.
+
 ## Examples
 If you clone the repo, there are two examples in `example.py`. To run:
 - `python example.py --example 1`
-- `python examlpe.py --example 2`
+- `python example.py --example 2`
 
 Example 1 is a reproduciton of Bob's trackbar example
 Example 2 is a file load, color convert and two gaussian blurs in successive windows to demonstrate the pipeline
 
-**Demo**:
-https://drive.google.com/open?id=1GUpTdmhZYhUZ3D7-PlTz90leqJ9auMqQ
+**Demo** [here](https://drive.google.com/open?id=1GUpTdmhZYhUZ3D7-PlTz90leqJ9auMqQ)
 
