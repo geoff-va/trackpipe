@@ -1,0 +1,6 @@
+.vscode/settings.json
+__pycache__/trackbar.cpython-35.pyc
+*.un~
+*.DS_Store
+__pycache__
+
