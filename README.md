@@ -5,6 +5,13 @@ This project is based on the work done by Bob Kerner, [here](https://github.gate
 
 **Note**: This code has not been tested against python 2.7
 
+## Installation
+`pip install git+https://github.com/geoff-va/trackpipe.git`
+
+or if you've cloned the repo:
+`pip install -e trackpipe/`
+
+
 ## Usage
 Create individual `Transform`s once, and then compose them into `Window`s and reuse them throughout your pipeline.
 
