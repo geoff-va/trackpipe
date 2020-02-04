@@ -162,6 +162,8 @@ class Param(object):
         self.value = max(_min, default)
         self.dirty = True
         self._pos = self.value
+        if adjust:
+            self.value = adjust(self.value)
 
     def update_value(self, win_name):
         """Fetches parm position from trackbar and sets dirty
@@ -259,7 +261,7 @@ def run_pipe(transforms, img=None):
             window.name, cv2.WINDOW_NORMAL|cv2.WINDOW_KEEPRATIO|cv2.WINDOW_GUI_EXPANDED)
         for t in window.transforms:
             for k, v in t.params.items():
-                cv2.createTrackbar(k, window.name, v.value, v.max, nothing)
+                cv2.createTrackbar(k, window.name, v._pos, v.max, nothing)
 
     # Draw an intitial image
     orig = None if img is None else np.copy(img)
