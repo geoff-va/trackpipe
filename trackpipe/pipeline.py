@@ -271,8 +271,14 @@ def run_pipe(transforms, img=None):
     # Loop performing transforms in each window
     while True:
         result = np.copy(img)
+        # Break on escape key
         k = cv2.waitKey(1) & 0xFF
         if k==27:
+            break
+	
+        # Break if all windows closed
+        vals = [cv2.getWindowProperty(win.name, cv2.WND_PROP_VISIBLE) for win in windows]
+        if not any(vals):
             break
 
         # Only update starting at first dirty window
