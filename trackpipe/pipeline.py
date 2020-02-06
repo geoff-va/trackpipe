@@ -10,6 +10,8 @@ So kudos to him for the original work and inspiration!
 """
 import logging
 
+from . import utils
+
 import numpy as np
 import cv2
 
@@ -23,7 +25,7 @@ def nothing(*a,**k):
 class Window(object):
     counter = 1
 
-    def __init__(self, transforms, name=''):
+    def __init__(self, transforms, name='', track_src=''):
         """A Window that transforms will be applied in named `name`
 
         Args:
@@ -37,12 +39,13 @@ class Window(object):
             Window.counter += 1
         else:
             self.name = name
+        self.track_src = self.name if not track_src else track_src
 
     @property
     def dirty(self):
         """Returns index of first tranform that's dirty or -1 if None dirty"""
         for i, transform in enumerate(self.transforms):
-            transform.update_params(self.name)
+            transform.update_params(self.track_src)
             if transform.dirty:
                 return i
         return -1
@@ -171,74 +174,13 @@ class Param(object):
         Args:
             win_name (str): Name of window to fetch param from
         """
+        print(f"updating {self.label} in {win_name}")
         pos = cv2.getTrackbarPos(self.label, win_name)
         self.dirty = False if self._pos == pos else True
         self._pos = pos
         if callable(self.adjust):
             pos = self.adjust(pos)
         self.value = max(pos, self.min)
-
-
-def _check_group(items):
-    """Raise TypeError if object in group is not Transform"""
-    for i in items:
-        if not isinstance(i, Transform):
-            raise TypeError("Items must be Transforms or list of transforms")
-
-
-def _create_initial_groups(transforms):
-    """Return [groups] and [non_groups] of Transforms
-
-    Args:
-        transforms ([Transform/Window]): transforms or windows. Cannot be a
-            mixture of both!
-
-    Returns:
-        [Window], [Transforms]: list of supplied windows, list of transforms
-            not in windows.
-    """
-    groups = []
-    non_groups = []
-    for idx, t in enumerate(transforms):
-        if isinstance(t, (Window)):
-            _check_group(t.transforms)
-            groups.append(t)
-        elif not isinstance(t, Transform):
-            raise ValueError("Items must be Transforms or list of transforms")
-        else:
-            non_groups.append(t)
-    return groups, non_groups
-
-
-def _collect_windows(transforms):
-    """Returns list of Windows"""
-    grouped, ungrouped = _create_initial_groups(transforms)
-    if len(ungrouped) == len(transforms):
-        return [Window(ungrouped)]
-    if grouped and ungrouped:
-        raise ValueError("Cannot have both groups and non-groups together.")
-    return grouped
-
-
-def check_dup_win_labels(windows):
-    """Raise ValueError if duplicate trackbar labels exist in same window
-
-    Args:
-        windows ([Window]): List of windows with their transforms
-    """
-    for win in windows:
-        params = {}
-        for t in win.transforms:
-            for label, p in t.params.items():
-                if label in params:
-                    raise ValueError(
-                        f"Param: `{label}` is defined twice in window `{win.name}` "
-                        f"in transforms `{t.__class__.__name__}` and "
-                        f"`{params[label]}`. Rename one by changing the attribute "
-                        "name or using the Param `label` kwarg."
-                    )
-                else:
-                    params[label] = t.__class__.__name__
 
 
 def run_pipe(transforms, img=None):
@@ -252,8 +194,8 @@ def run_pipe(transforms, img=None):
             like videos, etc). Default: None
         verbose (bool): If True, sets logging.LogLevel(logging.DEBUG) (Default: False)
     """
-    windows = _collect_windows(transforms)
-    check_dup_win_labels(windows)
+    windows = utils.collect_windows(transforms)
+    utils.check_dup_win_labels(windows)
 
     # Build the windows and trackbars
     for window in windows:
@@ -275,7 +217,7 @@ def run_pipe(transforms, img=None):
         k = cv2.waitKey(1) & 0xFF
         if k==27:
             break
-	
+
         # Break if all windows closed
         vals = [cv2.getWindowProperty(win.name, cv2.WND_PROP_VISIBLE) for win in windows]
         if not any(vals):
@@ -292,3 +234,4 @@ def run_pipe(transforms, img=None):
             result = window.draw(result)
 
     cv2.destroyAllWindows()
+
