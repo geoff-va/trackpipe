@@ -33,6 +33,7 @@ def _create_slave_windows(transforms, master_win_name, images):
 
 def _create_master_trackbars(window):
     """Create trackbars for master window"""
+    print(f'Creating master: {window.name}')
     cv2.namedWindow(
         window.name, cv2.WINDOW_NORMAL|cv2.WINDOW_KEEPRATIO|cv2.WINDOW_GUI_EXPANDED)
     for t in window.transforms:
@@ -52,13 +53,19 @@ def run_parallel(transforms, img_paths):
 
     # Setup the master window with the trackbars
     master_win = windows[0]
-    _create_master_trackbars(master_win)
     master_win.name = images[0]['path']
     master_win.track_src = images[0]['path']
+    _create_master_trackbars(master_win)
 
     # Create slave windows
     slave_wins = _create_slave_windows(transforms, master_win.name, images[1:])
     all_windows = [master_win] + slave_wins
+
+    # Update once so we have an image in each window
+    for img in images:
+        img['img'] = np.copy(img['img'])
+    for win, img in zip(all_windows, images):
+        win.draw(img['img'])
 
     # Loop performing transforms in each window
     while True:
@@ -74,16 +81,11 @@ def run_parallel(transforms, img_paths):
         # Break if all windows closed
         vals = [cv2.getWindowProperty(win.name, cv2.WND_PROP_VISIBLE) for win in all_windows]
         if not any(vals):
-            print("All windows closed, exiting")
             break
 
-        # import pdb
-        # pdb.set_trace()
-        if not all_windows[0].dirty:
-            print("All clean")
+        if all_windows[0].dirty == -1:
             continue
         for win, img in zip(all_windows, images):
             win.draw(img['img'])
 
-    print("DESTROY")
     cv2.destroyAllWindows()

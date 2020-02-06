@@ -174,7 +174,6 @@ class Param(object):
         Args:
             win_name (str): Name of window to fetch param from
         """
-        print(f"updating {self.label} in {win_name}")
         pos = cv2.getTrackbarPos(self.label, win_name)
         self.dirty = False if self._pos == pos else True
         self._pos = pos
