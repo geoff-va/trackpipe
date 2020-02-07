@@ -7,6 +7,11 @@ from . import utils, pipeline
 
 
 def _load_images(img_paths):
+    """Load images into [{'path': ..., 'img': np.array}, ...] for images
+
+    Args:
+        img_paths ([str]): paths to images
+    """
     images = []
     for path in img_paths:
         img = Path(path)
@@ -20,11 +25,17 @@ def _load_images(img_paths):
 
 
 def _create_slave_windows(transforms, master_win_name, images):
+    """Create windows that will not have trackbars
+
+    Args:
+        transforms ([Transform]): list of transforms in order of execution
+        master_win_name (str): Name of the master window with trackbar controls
+        images ([{}]): list of {'path': ..., 'img': np.array}'s for slaves
+    """
     slaves = []
     for img in images:
         win = pipeline.Window(
             transforms, name=img['path'], track_src=master_win_name)
-        print(f"creating window {win.name}")
         cv2.namedWindow(
             win.name, cv2.WINDOW_NORMAL|cv2.WINDOW_KEEPRATIO|cv2.WINDOW_GUI_EXPANDED)
         slaves.append(win)
@@ -32,8 +43,11 @@ def _create_slave_windows(transforms, master_win_name, images):
 
 
 def _create_master_trackbars(window):
-    """Create trackbars for master window"""
-    print(f'Creating master: {window.name}')
+    """Create trackbars for master window
+
+    Args:
+        window (Window): window that will be the master with trackbar conrols
+    """
     cv2.namedWindow(
         window.name, cv2.WINDOW_NORMAL|cv2.WINDOW_KEEPRATIO|cv2.WINDOW_GUI_EXPANDED)
     for t in window.transforms:
@@ -41,8 +55,15 @@ def _create_master_trackbars(window):
             cv2.createTrackbar(k, window.name, v._pos, v.max, pipeline.nothing)
 
 
-
 def run_parallel(transforms, img_paths):
+    """Run a single list of transforms on multiple images
+
+    Args:
+        transforms [Transform]: list of transforms in order of execution
+        img_paths ([str]): List of paths to images. First image is master
+    """
+
+    # Can only have a single window
     windows = utils.collect_windows(transforms)
     if len(windows) > 1:
         raise ValueError('Must only be a single window for parallel processing')
@@ -57,7 +78,7 @@ def run_parallel(transforms, img_paths):
     master_win.track_src = images[0]['path']
     _create_master_trackbars(master_win)
 
-    # Create slave windows
+    # Create windows that won't have trackbars
     slave_wins = _create_slave_windows(transforms, master_win.name, images[1:])
     all_windows = [master_win] + slave_wins
 
