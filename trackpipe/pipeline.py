@@ -10,7 +10,10 @@ So kudos to him for the original work and inspiration!
 """
 import logging
 
-from . import utils
+from . import (
+    sequence_utils,
+    parallel_utils
+)
 
 import numpy as np
 import cv2
@@ -193,8 +196,8 @@ def run_pipe(transforms, img=None):
             like videos, etc). Default: None
         verbose (bool): If True, sets logging.LogLevel(logging.DEBUG) (Default: False)
     """
-    windows = utils.collect_windows(transforms)
-    utils.check_dup_win_labels(windows)
+    windows = sequence_utils.collect_windows(transforms)
+    sequence_utils.check_dup_win_labels(windows)
 
     # Build the windows and trackbars
     for window in windows:
@@ -234,3 +237,59 @@ def run_pipe(transforms, img=None):
 
     cv2.destroyAllWindows()
 
+
+def run_parallel_pipe(transforms, img_paths):
+    """Run a single list of transforms on multiple images
+
+    Args:
+        transforms [Transform]: list of transforms in order of execution
+        img_paths ([str]): List of paths to images. First image is master
+    """
+
+    # Can only have a single window
+    windows = sequence_utils.collect_windows(transforms)
+    if len(windows) > 1:
+        raise ValueError('Must only be a single window for parallel processing')
+    sequence_utils.check_dup_win_labels(windows)
+
+    # Get all images with their loaded img content
+    images = parallel_utils.load_images(img_paths)
+
+    # Setup the master window with the trackbars
+    master_win = windows[0]
+    master_win.name = images[0]['path']
+    master_win.track_src = images[0]['path']
+    parallel_utils.create_master_trackbars(master_win)
+
+    # Create windows that won't have trackbars
+    slave_wins = parallel_utils.create_slave_windows(transforms, master_win.name, images[1:])
+    all_windows = [master_win] + slave_wins
+
+    # Update once so we have an image in each window
+    for img in images:
+        img['img'] = np.copy(img['img'])
+    for win, img in zip(all_windows, images):
+        win.draw(img['img'])
+
+    # Loop performing transforms in each window
+    while True:
+        # Copy all images
+        for img in images:
+            img['img'] = np.copy(img['img'])
+
+        # Break on escape key
+        k = cv2.waitKey(1) & 0xFF
+        if k==27:
+            break
+
+        # Break if all windows closed
+        vals = [cv2.getWindowProperty(win.name, cv2.WND_PROP_VISIBLE) for win in all_windows]
+        if not any(vals):
+            break
+
+        if all_windows[0].dirty == -1:
+            continue
+        for win, img in zip(all_windows, images):
+            win.draw(img['img'])
+
+    cv2.destroyAllWindows()

@@ -1,14 +1,14 @@
 from . import pipeline
 
 
-def check_group(items):
+def _check_group(items):
     """Raise TypeError if object in group is not Transform"""
     for i in items:
         if not isinstance(i, pipeline.Transform):
             raise TypeError("Items must be Transforms or list of transforms")
 
 
-def create_initial_groups(transforms):
+def _create_initial_groups(transforms):
     """Return [groups] and [non_groups] of Transforms
 
     Args:
@@ -23,7 +23,7 @@ def create_initial_groups(transforms):
     non_groups = []
     for idx, t in enumerate(transforms):
         if isinstance(t, (pipeline.Window)):
-            check_group(t.transforms)
+            _check_group(t.transforms)
             groups.append(t)
         elif not isinstance(t, pipeline.Transform):
             raise ValueError("Items must be Transforms or list of transforms")
@@ -34,7 +34,7 @@ def create_initial_groups(transforms):
 
 def collect_windows(transforms):
     """Returns list of Windows"""
-    grouped, ungrouped = create_initial_groups(transforms)
+    grouped, ungrouped = _create_initial_groups(transforms)
     if len(ungrouped) == len(transforms):
         return [pipeline.Window(ungrouped)]
     if grouped and ungrouped:
