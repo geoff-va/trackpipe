@@ -1,5 +1,5 @@
 # trackpipe
-This project is an image processing pipeline that allows you to create reusable transformations and compose them into individual windows to see intermediate output.
+This project is an image processing pipeline that allows you to create reusable transformations and compose them into individual windows to see intermediate output. You can also run a single set of transforms on multiple images simultaneously.
 
 This project is based on the work done by Bob Kerner, [here](https://github.gatech.edu/bkerner3/trackbar), so kudos to Bob!
 
@@ -15,6 +15,7 @@ or if you've cloned the repo:
 
 
 ## Usage
+### Sequenced Pipeline
 Create individual `Transform`s once, add them into `Window`s and reuse/reorder them throughout your pipeline.
 
 - Subclass `pipeline.Transform`
@@ -58,6 +59,28 @@ If no `name` parameter is passed to the `Window` constructor, it defaults to `St
 A few simple transforms are included.
 
 If you override the `__init__` method, you _must_ call `super().__init__()` first.
+
+### Parallel Pipeline
+You can apply a single sequence of transforms to multiple images simultaneously with `run_parallel_pipe`.
+
+You supply the list of transforms and list of images. The first image will be the master window with trackbar controls, and those trackbars will control the master and all the slaves at the same time.
+
+```python
+from pipeline import run_parallel_pipe
+
+images = [
+    'path1.jpg',
+    'path2.jpg',
+]
+
+transforms = [
+    YourTransform1(),
+    YourTransform2(),
+    YourTransform3()
+]
+
+run_parallel_pipe(transforms, images)
+```
 
 ## Examples
 If you clone the repo, there are two examples in `example.py`. To run:
