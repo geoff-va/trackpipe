@@ -20,7 +20,7 @@ def package_data(pkg, roots):
 
 setup(
     name='trackpipe',
-    version='1.0.1',
+    version='1.0.2',
     description='Pipeline Implementation of trackbar from: https://github.gatech.edu/bkerner3/trackbar',
     packages=[
         'trackpipe',

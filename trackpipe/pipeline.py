@@ -10,6 +10,11 @@ So kudos to him for the original work and inspiration!
 """
 import logging
 
+from . import (
+    sequence_utils,
+    parallel_utils
+)
+
 import numpy as np
 import cv2
 
@@ -23,7 +28,7 @@ def nothing(*a,**k):
 class Window(object):
     counter = 1
 
-    def __init__(self, transforms, name=''):
+    def __init__(self, transforms, name='', track_src=''):
         """A Window that transforms will be applied in named `name`
 
         Args:
@@ -37,12 +42,13 @@ class Window(object):
             Window.counter += 1
         else:
             self.name = name
+        self.track_src = self.name if not track_src else track_src
 
     @property
     def dirty(self):
         """Returns index of first tranform that's dirty or -1 if None dirty"""
         for i, transform in enumerate(self.transforms):
-            transform.update_params(self.name)
+            transform.update_params(self.track_src)
             if transform.dirty:
                 return i
         return -1
@@ -179,68 +185,6 @@ class Param(object):
         self.value = max(pos, self.min)
 
 
-def _check_group(items):
-    """Raise TypeError if object in group is not Transform"""
-    for i in items:
-        if not isinstance(i, Transform):
-            raise TypeError("Items must be Transforms or list of transforms")
-
-
-def _create_initial_groups(transforms):
-    """Return [groups] and [non_groups] of Transforms
-
-    Args:
-        transforms ([Transform/Window]): transforms or windows. Cannot be a
-            mixture of both!
-
-    Returns:
-        [Window], [Transforms]: list of supplied windows, list of transforms
-            not in windows.
-    """
-    groups = []
-    non_groups = []
-    for idx, t in enumerate(transforms):
-        if isinstance(t, (Window)):
-            _check_group(t.transforms)
-            groups.append(t)
-        elif not isinstance(t, Transform):
-            raise ValueError("Items must be Transforms or list of transforms")
-        else:
-            non_groups.append(t)
-    return groups, non_groups
-
-
-def _collect_windows(transforms):
-    """Returns list of Windows"""
-    grouped, ungrouped = _create_initial_groups(transforms)
-    if len(ungrouped) == len(transforms):
-        return [Window(ungrouped)]
-    if grouped and ungrouped:
-        raise ValueError("Cannot have both groups and non-groups together.")
-    return grouped
-
-
-def check_dup_win_labels(windows):
-    """Raise ValueError if duplicate trackbar labels exist in same window
-
-    Args:
-        windows ([Window]): List of windows with their transforms
-    """
-    for win in windows:
-        params = {}
-        for t in win.transforms:
-            for label, p in t.params.items():
-                if label in params:
-                    raise ValueError(
-                        f"Param: `{label}` is defined twice in window `{win.name}` "
-                        f"in transforms `{t.__class__.__name__}` and "
-                        f"`{params[label]}`. Rename one by changing the attribute "
-                        "name or using the Param `label` kwarg."
-                    )
-                else:
-                    params[label] = t.__class__.__name__
-
-
 def run_pipe(transforms, img=None):
     """Run the pipeline
 
@@ -252,8 +196,8 @@ def run_pipe(transforms, img=None):
             like videos, etc). Default: None
         verbose (bool): If True, sets logging.LogLevel(logging.DEBUG) (Default: False)
     """
-    windows = _collect_windows(transforms)
-    check_dup_win_labels(windows)
+    windows = sequence_utils.collect_windows(transforms)
+    sequence_utils.check_dup_win_labels(windows)
 
     # Build the windows and trackbars
     for window in windows:
@@ -275,7 +219,7 @@ def run_pipe(transforms, img=None):
         k = cv2.waitKey(1) & 0xFF
         if k==27:
             break
-	
+
         # Break if all windows closed
         vals = [cv2.getWindowProperty(win.name, cv2.WND_PROP_VISIBLE) for win in windows]
         if not any(vals):
@@ -290,5 +234,62 @@ def run_pipe(transforms, img=None):
         result = result if offset == 0 else windows[offset - 1].last_output
         for window in windows[offset:]:
             result = window.draw(result)
+
+    cv2.destroyAllWindows()
+
+
+def run_parallel_pipe(transforms, img_paths):
+    """Run a single list of transforms on multiple images
+
+    Args:
+        transforms [Transform]: list of transforms in order of execution
+        img_paths ([str]): List of paths to images. First image is master
+    """
+
+    # Can only have a single window
+    windows = sequence_utils.collect_windows(transforms)
+    if len(windows) > 1:
+        raise ValueError('Must only be a single window for parallel processing')
+    sequence_utils.check_dup_win_labels(windows)
+
+    # Get all images with their loaded img content
+    images = parallel_utils.load_images(img_paths)
+
+    # Setup the master window with the trackbars
+    master_win = windows[0]
+    master_win.name = images[0]['path']
+    master_win.track_src = images[0]['path']
+    parallel_utils.create_master_trackbars(master_win)
+
+    # Create windows that won't have trackbars
+    slave_wins = parallel_utils.create_slave_windows(transforms, master_win.name, images[1:])
+    all_windows = [master_win] + slave_wins
+
+    # Update once so we have an image in each window
+    for img in images:
+        img['img'] = np.copy(img['img'])
+    for win, img in zip(all_windows, images):
+        win.draw(img['img'])
+
+    # Loop performing transforms in each window
+    while True:
+        # Copy all images
+        for img in images:
+            img['img'] = np.copy(img['img'])
+
+        # Break on escape key
+        k = cv2.waitKey(1) & 0xFF
+        if k==27:
+            break
+
+        # Break if all windows closed
+        vals = [cv2.getWindowProperty(win.name, cv2.WND_PROP_VISIBLE) for win in all_windows]
+        if not any(vals):
+            break
+
+        if all_windows[0].dirty == -1:
+            continue
+        for win, img in zip(all_windows, images):
+            win.draw(img['img'])
 
     cv2.destroyAllWindows()
