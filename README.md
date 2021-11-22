@@ -7,6 +7,9 @@ This project is based on the work done by Bob Kerner, [here](https://github.gate
 
 **Note**: This code has not been tested against python 2.7
 
+## OpenCV-Playground
+`trackpipe` was a precursor to [opencv-pg](https://github.com/opencv-pg/opencv-pg) - The OpenCV Playground. It's a more full fledged and interactive platform for designing interactive pipelines and testing out built in opencv functions.
+
 ## Installation
 `pip install git+https://github.com/geoff-va/trackpipe.git`
 
